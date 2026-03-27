@@ -104,7 +104,7 @@ The server will start listening on `0.0.0.0:4134`.
 
 ```bash
 # Clone the repository
-git clone https://github.com/dahirmuhammaddahir/fingerprint_grpc.git
+git clone https://github.com/mlutfi/go_uRu_4500_fingerprint_grpc
 cd fingerprint_grpc
 
 # Install Go dependencies
@@ -289,7 +289,6 @@ protoc --proto_path=proto/ \
 
 - Original C++ implementation: [alhytham-tech/grpc-fingerprint-engine](https://github.com/alhytham-tech/grpc-fingerprint-engine)
 - DigitalPersona SDK by HID Global
-- Author: Dahir Muhammad Dahir
 
 ## License
 

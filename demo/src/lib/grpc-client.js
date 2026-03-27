@@ -3,12 +3,21 @@ import * as protoLoader from '@grpc/proto-loader';
 import path from 'path';
 
 const PROTO_PATH = path.join(process.cwd(), '..', 'proto', 'fingerprint.proto');
-const GRPC_URL = process.env.GRPC_FINGERPRINT_URL || 'localhost:4134';
 
 let client = null;
+let clientUrl = null;
 
 function getClient() {
+  const url = process.env.GRPC_FINGERPRINT_URL || 'localhost:4134';
+
+  // Recreate client if URL changed (e.g. env reloaded)
+  if (client && clientUrl !== url) {
+    client.close();
+    client = null;
+  }
+
   if (!client) {
+    console.log('[gRPC] Connecting to fingerprint engine at:', url);
     const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
       keepCase: true,
       longs: String,
@@ -19,9 +28,10 @@ function getClient() {
 
     const proto = grpc.loadPackageDefinition(packageDefinition);
     client = new proto.fingerprint.FingerPrint(
-      GRPC_URL,
+      url,
       grpc.credentials.createInsecure()
     );
+    clientUrl = url;
   }
   return client;
 }

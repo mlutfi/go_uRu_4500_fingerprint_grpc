@@ -28,8 +28,19 @@ export async function POST(request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Call gRPC to enroll fingerprint
-    const enrolledFmd = await enrollFingerprint(fmdCandidates);
+    let enrolledFmd = null;
+    let enrollmentMode = 'grpc';
+
+    // Try gRPC enrollment first
+    try {
+      enrolledFmd = await enrollFingerprint(fmdCandidates);
+    } catch (grpcErr) {
+      console.warn('[Enroll] gRPC enrollment failed, using local fallback:', grpcErr.message);
+      // Fallback: store the first captured FMD directly as the enrolled template
+      // This allows the demo to work without the gRPC server running
+      enrolledFmd = fmdCandidates[0];
+      enrollmentMode = 'local_fallback';
+    }
 
     if (!enrolledFmd) {
       return NextResponse.json(
@@ -45,6 +56,7 @@ export async function POST(request) {
 
     return NextResponse.json({
       success: true,
+      enrollmentMode,
       fingerprint: {
         id: result.lastInsertRowid,
         user_id: userId,

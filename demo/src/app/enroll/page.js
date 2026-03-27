@@ -47,12 +47,13 @@ export default function EnrollPage() {
     }
   };
 
-  // Handle fingerprint capture
+  // Handle fingerprint capture from scanner (auto or manual)
   const handleCapture = (fmdData) => {
+    if (captures.length >= 3) return;
+
     setScanStatus('scanning');
     setScanStatusText('Processing fingerprint...');
 
-    // Simulate processing delay
     setTimeout(() => {
       const newCaptures = [...captures, fmdData];
       setCaptures(newCaptures);
@@ -161,7 +162,7 @@ export default function EnrollPage() {
           {step === 'done' ? '✓' : '2'}
         </div>
         <span style={{ fontSize: '14px', fontWeight: step === 'enroll' ? 600 : 400, color: step === 'enroll' ? 'var(--text-primary)' : step === 'done' ? 'var(--success)' : 'var(--text-muted)' }}>
-          Fingerprint Enrollment
+          Fingerprint Scan
         </span>
         <div style={{ width: '40px', height: '2px', background: step === 'done' ? 'var(--success)' : 'var(--border)' }} />
         <div style={{
@@ -223,7 +224,7 @@ export default function EnrollPage() {
                   Creating User...
                 </>
               ) : (
-                <>Continue to Fingerprint Enrollment →</>
+                <>Continue to Fingerprint Scan →</>
               )}
             </button>
           </form>
@@ -236,14 +237,14 @@ export default function EnrollPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
             <div>
               <h3 style={{ fontSize: '18px', fontWeight: 600 }}>
-                👆 Fingerprint Enrollment
+                👆 Fingerprint Scan
               </h3>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
                 Enrolling for: <strong style={{ color: 'var(--accent-primary-hover)' }}>{user?.name}</strong>
                 {' '}({user?.employee_id})
               </p>
             </div>
-            <span className="badge badge-info">Step {Math.min(captureStep + 1, 3)} of 3</span>
+            <span className="badge badge-info">Capture {Math.min(captureStep + 1, 3)} of 3</span>
           </div>
 
           {/* Capture Progress Dots */}
@@ -269,6 +270,7 @@ export default function EnrollPage() {
               hintText={`Capture ${captureStep + 1} of 3 — Place your finger on the scanner`}
               onCapture={handleCapture}
               disabled={captures.length >= 3}
+              autoStart={true}
             />
           ) : (
             <div style={{ textAlign: 'center', padding: '32px' }}>
@@ -277,7 +279,7 @@ export default function EnrollPage() {
                 All 3 Captures Complete!
               </h3>
               <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '24px' }}>
-                Ready to enroll fingerprint. This will combine all 3 captures into a single enrolled template.
+                Ready to enroll fingerprint. This will combine all 3 captures into a single enrolled template via gRPC.
               </p>
               <button
                 className="btn btn-success btn-lg"

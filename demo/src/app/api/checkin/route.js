@@ -46,10 +46,21 @@ export async function POST(request) {
       userMap.get(row.user_id).fingerprints.push(row.enrolled_fmd);
     }
 
-    // Try to verify against each user's fingerprints
+    // Try gRPC verification first, fall back to simple string matching
+    let verificationMode = 'grpc';
+
     for (const [userId, userData] of userMap) {
       try {
-        const isMatch = await verifyFingerprint(fmd, userData.fingerprints);
+        let isMatch = false;
+
+        try {
+          isMatch = await verifyFingerprint(fmd, userData.fingerprints);
+        } catch (grpcErr) {
+          // gRPC server unavailable — fallback to direct FMD string comparison
+          // This works when enrollment also used local_fallback mode
+          verificationMode = 'local_fallback';
+          isMatch = userData.fingerprints.some(enrolled => enrolled === fmd);
+        }
         
         if (isMatch) {
           // Record check-in
@@ -60,6 +71,7 @@ export async function POST(request) {
           return NextResponse.json({
             success: true,
             match: true,
+            verificationMode,
             user: {
               id: userData.id,
               name: userData.name,

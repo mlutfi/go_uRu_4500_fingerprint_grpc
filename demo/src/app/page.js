@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import DeviceStatus from '@/components/DeviceStatus';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -56,7 +57,7 @@ export default function Dashboard() {
     <div style={{ animation: 'fadeIn 0.4s ease' }}>
       <div className="page-header">
         <h2>Dashboard</h2>
-        <p>Fingerprint biometric system overview</p>
+        <p>Fingerprint biometric system overview · U.are.U 4500</p>
       </div>
 
       <div className="stats-grid">
@@ -76,9 +77,11 @@ export default function Dashboard() {
           <div className="stat-label">Today&apos;s Check-ins</div>
         </div>
         <div className="stat-card info">
-          <div className="stat-icon">🔗</div>
-          <div className="stat-value" style={{ fontSize: '18px' }}>localhost:4134</div>
-          <div className="stat-label">gRPC Server</div>
+          <div className="stat-icon">🔌</div>
+          <div style={{ marginTop: '4px' }}>
+            <DeviceStatus compact />
+          </div>
+          <div className="stat-label" style={{ marginTop: '8px' }}>Scanner Status</div>
         </div>
       </div>
 

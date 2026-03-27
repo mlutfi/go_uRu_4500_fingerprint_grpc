@@ -7,21 +7,48 @@ export default function UsersPage() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [deletingId, setDeletingId] = useState(null);
+
+  async function fetchUsers() {
+    try {
+      const res = await fetch('/api/users');
+      const data = await res.json();
+      setUsers(data.users || []);
+    } catch (err) {
+      setError('Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    async function fetchUsers() {
-      try {
-        const res = await fetch('/api/users');
-        const data = await res.json();
-        setUsers(data.users || []);
-      } catch (err) {
-        setError('Failed to load users');
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchUsers();
   }, []);
+
+  async function handleDelete(user) {
+    if (!confirm(`Delete "${user.name}"?\n\nThis will remove the user, all fingerprints, and check-in history. This cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingId(user.id);
+    setError('');
+
+    try {
+      const res = await fetch(`/api/users?id=${user.id}`, { method: 'DELETE' });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to delete user');
+      }
+
+      // Remove from list
+      setUsers(prev => prev.filter(u => u.id !== user.id));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   if (loading) {
     return (
@@ -85,7 +112,15 @@ export default function UsersPage() {
           {/* Users Grid */}
           <div className="users-grid">
             {users.map((user) => (
-              <div key={user.id} className="user-card">
+              <div
+                key={user.id}
+                className="user-card"
+                style={{
+                  opacity: deletingId === user.id ? 0.5 : 1,
+                  pointerEvents: deletingId === user.id ? 'none' : 'auto',
+                  transition: 'opacity 0.2s ease',
+                }}
+              >
                 <div className="user-avatar">
                   {user.name?.charAt(0)?.toUpperCase()}
                 </div>
@@ -117,6 +152,36 @@ export default function UsersPage() {
                     Registered
                   </div>
                 </div>
+                {/* Delete button */}
+                <button
+                  onClick={() => handleDelete(user)}
+                  disabled={deletingId !== null}
+                  style={{
+                    marginTop: '12px',
+                    width: '100%',
+                    padding: '8px',
+                    fontSize: '12px',
+                    fontFamily: 'inherit',
+                    color: 'var(--danger)',
+                    background: 'var(--danger-bg)',
+                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: deletingId ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!deletingId) {
+                      e.target.style.background = 'rgba(239, 68, 68, 0.2)';
+                      e.target.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'var(--danger-bg)';
+                    e.target.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+                  }}
+                >
+                  {deletingId === user.id ? '⏳ Deleting...' : '🗑️ Delete'}
+                </button>
               </div>
             ))}
           </div>

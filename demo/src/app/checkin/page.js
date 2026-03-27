@@ -77,7 +77,7 @@ export default function CheckinPage() {
     <div style={{ animation: 'fadeIn 0.4s ease' }}>
       <div className="page-header">
         <h2>Fingerprint Check-in</h2>
-        <p>Scan your fingerprint to check in</p>
+        <p>Place your finger on the scanner to check in</p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
@@ -92,6 +92,7 @@ export default function CheckinPage() {
             statusText={scanStatusText}
             hintText="Place your finger on the scanner to check in"
             onCapture={handleCapture}
+            autoStart={true}
           />
 
           {/* Result Display */}

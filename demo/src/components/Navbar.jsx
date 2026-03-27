@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import DeviceStatus from './DeviceStatus';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -19,7 +20,7 @@ export default function Navbar() {
         <div className="sidebar-logo-icon">🔐</div>
         <div>
           <h1>FingerAuth</h1>
-          <span>Biometric System</span>
+          <span>U.are.U 4500</span>
         </div>
       </div>
 
@@ -36,11 +37,16 @@ export default function Navbar() {
           </Link>
         ))}
 
-        <div className="nav-section-label" style={{ marginTop: '24px' }}>System</div>
+        <div className="nav-section-label" style={{ marginTop: '24px' }}>Device</div>
+        <div style={{ padding: '0 4px' }}>
+          <DeviceStatus />
+        </div>
+
+        <div className="nav-section-label" style={{ marginTop: '16px' }}>System</div>
         <div className="nav-link" style={{ cursor: 'default' }}>
           <span className="nav-link-icon">🔗</span>
           <div>
-            <div style={{ fontSize: '13px' }}>gRPC Server</div>
+            <div style={{ fontSize: '13px' }}>gRPC Engine</div>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>localhost:4134</div>
           </div>
         </div>
@@ -48,10 +54,10 @@ export default function Navbar() {
 
       <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border)' }}>
         <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-          FingerAuth Demo v1.0
+          FingerAuth Demo v2.0
         </div>
         <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-          U.are.U 4500 · gRPC Engine
+          U.are.U 4500 · WebSDK · gRPC Engine
         </div>
       </div>
     </aside>
