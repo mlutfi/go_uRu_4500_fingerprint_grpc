@@ -1,0 +1,45 @@
+// gRPC Fingerprint Engine - Protocol Buffer Definition
+// A Go reimplementation of the DigitalPersona fingerprint engine gRPC wrapper
+// Original: https://github.com/alhytham-tech/grpc-fingerprint-engine
+
+syntax = "proto3";
+
+package fingerprint;
+
+option go_package = "go_uRu_4500_fingerprint_grpc/gen/fingerprint";
+
+service FingerPrint {
+    // EnrollFingerprint combines multiple pre-registered FMDs into a single enrolled FMD
+    rpc EnrollFingerprint(EnrollmentRequest) returns (EnrolledFMD) {};
+
+    // VerifyFingerprint checks if a target FMD matches any of the enrolled FMD candidates
+    rpc VerifyFingerprint(VerificationRequest) returns (VerificationResponse) {};
+
+    // CheckDuplicate checks if a fingerprint already exists in a set of candidates
+    rpc CheckDuplicate(VerificationRequest) returns (CheckDuplicateResponse);
+}
+
+message PreEnrolledFMD {
+    string base64PreEnrolledFMD = 1;
+}
+
+message EnrolledFMD {
+    string base64EnrolledFMD = 1;
+}
+
+message EnrollmentRequest {
+    repeated PreEnrolledFMD fmdCandidates = 1;
+}
+
+message VerificationRequest {
+    PreEnrolledFMD targetFMD = 1;
+    repeated EnrolledFMD fmdCandidates = 2;
+}
+
+message VerificationResponse {
+    bool match = 1;
+}
+
+message CheckDuplicateResponse {
+    bool isDuplicate = 1;
+}

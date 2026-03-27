@@ -1,0 +1,30 @@
+services:
+  fingerprint-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fingerprint_grpc_server
+    ports:
+      - "4134:4134"
+    environment:
+      - PORT=4134
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=:4134"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "1.0"
+        reservations:
+          memory: 64M
+          cpus: "0.25"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
