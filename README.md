@@ -43,12 +43,12 @@ Designed for use with the **DigitalPersona U.are.U 4500** fingerprint scanner.
 │                     │ CGo (thread-safe)              │
 │  ┌──────────────────▼──────────────────────────┐    │
 │  │         pkg/dpfj/dpfj.go                    │    │
-│  │    (CGo bindings for libdpfj.so + mutex)    │    │
+│  │  (CGo bindings for dpfj + mutex)            │    │
 │  └──────────────────┬──────────────────────────┘    │
 │                     │ FFI                           │
 │  ┌──────────────────▼──────────────────────────┐    │
 │  │      DigitalPersona dpfj Native Library     │    │
-│  │             (libdpfj.so)                    │    │
+│  │   Linux: libdpfj.so  │  Windows: dpfj.dll   │    │
 │  └─────────────────────────────────────────────┘    │
 │                                                     │
 │  ┌─────────────────────────────────────────────┐    │
@@ -69,7 +69,9 @@ fingerprint_grpc/
 │       └── server.go                # gRPC service implementation (slog, gRPC status codes)
 ├── pkg/
 │   └── dpfj/
-│       └── dpfj.go                  # CGo bindings for libdpfj (thread-safe, custom errors)
+│       ├── dpfj.go                  # CGo bindings for libdpfj (thread-safe, custom errors)
+│       ├── dpfj.h                   # DigitalPersona SDK header (Windows & Linux)
+│       └── libdpfj.a               # MinGW import library generated from dpfj.dll (Windows only)
 ├── gen/
 │   └── fingerprint/
 │       ├── fingerprint.pb.go        # Generated protobuf types
@@ -98,9 +100,9 @@ docker run -p 4134:4134 fingerprint_grpc
 
 The server will start listening on `0.0.0.0:4134`.
 
-### Build from Source
+### Build from Source (Linux)
 
-> **Prerequisites**: Go 1.24+, DigitalPersona Linux SDK installed (`libdpfj.so` available in system library path)
+> **Prerequisites**: Go 1.24+, DigitalPersona Linux SDK installed (`libdpfj.so` in system library path), GCC
 
 ```bash
 # Clone the repository
@@ -117,11 +119,23 @@ CGO_ENABLED=1 go build -ldflags="-s -w" -o fingerprint_server ./cmd/server/
 ./fingerprint_server
 ```
 
+### Build from Source (Windows)
+
+See **[Windows Setup](#windows-setup)** below for the required one-time setup, then:
+
+```powershell
+# Build
+go build -ldflags="-s -w" -o fingerprint_server.exe ./cmd/server/
+
+# Run
+.\fingerprint_server.exe
+```
+
 ## Prerequisites
 
 ### DigitalPersona Linux SDK
 
-The server requires the DigitalPersona `libdpfj` library. To install:
+The server requires the DigitalPersona `libdpfj` library. To install on Linux:
 
 ```bash
 # Download the SDK
@@ -133,6 +147,97 @@ tar -xvf libdpfj.tar
 sudo cp -r opt/* /opt/
 sudo cp lib/* /lib/
 ```
+
+---
+
+## Windows Setup
+
+Running natively on Windows requires a **one-time setup** to enable CGo and link against the `dpfj.dll` that ships with the DigitalPersona U.are.U driver.
+
+### Step 1 — Install the U.are.U Driver
+
+Make sure the **DigitalPersona U.are.U 4500** driver is installed. After installation, verify the DLL exists:
+
+```powershell
+Test-Path "C:\Windows\System32\dpfj.dll"   # should return True
+```
+
+If you don't have the driver, download and install it from the [DigitalPersona / HID Global support page](https://www.hidglobal.com/drivers).
+
+### Step 2 — Install MSYS2 and the MinGW-w64 GCC Toolchain
+
+CGo requires a C compiler. The recommended toolchain for Windows is **MinGW-w64** via MSYS2.
+
+```powershell
+# Install MSYS2 (requires winget)
+winget install -e --id MSYS2.MSYS2 --accept-source-agreements --accept-package-agreements
+```
+
+Then open the **MSYS2 UCRT64** shell (Start Menu → MSYS2) and run:
+
+```bash
+pacman -S --noconfirm mingw-w64-x86_64-gcc mingw-w64-x86_64-tools-git
+```
+
+### Step 3 — Generate the Import Library (`libdpfj.a`)
+
+CGo on Windows requires a MinGW-compatible import library (`.a`) alongside the DLL.  
+Run once from a **PowerShell** window:
+
+```powershell
+$env:PATH = "C:\msys64\mingw64\bin;$env:PATH"
+
+# Generate .def file from the installed DLL
+gendef "C:\Windows\System32\dpfj.dll"
+
+# Create the MinGW import library
+dlltool -D dpfj.dll -d dpfj.def -l pkg\dpfj\libdpfj.a
+
+# Clean up the temporary .def file
+Remove-Item dpfj.def
+```
+
+This places `libdpfj.a` inside `pkg/dpfj/` where the CGo `LDFLAGS` (`-L${SRCDIR}`) will find it automatically.
+
+> **Note:** `libdpfj.a` is already committed to the repository, so you can skip this step if you cloned the repo and the file is present.
+
+### Step 4 — Make GCC and CGo Permanent (User Environment)
+
+So that plain `go run` / `go build` works from any terminal without extra flags:
+
+```powershell
+# Add MinGW GCC to your user PATH
+$currentPath = [System.Environment]::GetEnvironmentVariable("PATH", "User")
+[System.Environment]::SetEnvironmentVariable("PATH", "C:\msys64\mingw64\bin;$currentPath", "User")
+
+# Enable CGo by default
+[System.Environment]::SetEnvironmentVariable("CGO_ENABLED", "1", "User")
+```
+
+> **Restart** any open PowerShell / terminal windows for the changes to take effect.
+
+### Step 5 — Run the Server
+
+```powershell
+go run .\cmd\server\main.go
+```
+
+Expected output:
+
+```json
+{"time":"...","level":"INFO","msg":"server started","address":"0.0.0.0:4134"}
+```
+
+### Windows Troubleshooting
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `build constraints exclude all Go files in pkg/dpfj` | CGo is disabled (`CGO_ENABLED=0`) or no C compiler found | Complete Steps 2–4 and restart your terminal |
+| `gcc: The term 'gcc' is not recognized` | MinGW not in PATH | Complete Step 2 and restart your terminal |
+| `cannot find -ldpfj` | `libdpfj.a` is missing | Re-run Step 3 |
+| `dpfj.dll` not found at runtime | U.are.U driver not installed | Install the U.are.U 4500 driver (Step 1) |
+
+---
 
 ### Client-Side Fingerprint Capture
 

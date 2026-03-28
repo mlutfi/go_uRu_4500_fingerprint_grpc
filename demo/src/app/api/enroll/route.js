@@ -37,8 +37,9 @@ export async function POST(request) {
     } catch (grpcErr) {
       console.warn('[Enroll] gRPC enrollment failed, using local fallback:', grpcErr.message);
       // Fallback: store the first captured FMD directly as the enrolled template
-      // This allows the demo to work without the gRPC server running
-      enrolledFmd = fmdCandidates[0];
+      const firstFmd = fmdCandidates[0];
+      // Handle case where FMD is a BioSample object { Header, Data } instead of a string
+      enrolledFmd = typeof firstFmd === 'string' ? firstFmd : (firstFmd?.Data || JSON.stringify(firstFmd));
       enrollmentMode = 'local_fallback';
     }
 
@@ -48,6 +49,13 @@ export async function POST(request) {
         { status: 500 }
       );
     }
+
+    // Ensure enrolledFmd is a string for SQLite
+    if (typeof enrolledFmd !== 'string') {
+      enrolledFmd = JSON.stringify(enrolledFmd);
+    }
+
+    console.log('[Enroll] Saving FMD, mode:', enrollmentMode, ', length:', enrolledFmd.length);
 
     // Save enrolled FMD to database
     const result = db.prepare(

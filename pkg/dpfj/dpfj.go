@@ -10,58 +10,13 @@
 package dpfj
 
 /*
-#cgo LDFLAGS: -ldpfj
+#cgo windows LDFLAGS: -L${SRCDIR} -ldpfj
+#cgo linux LDFLAGS: -ldpfj
 #include <stdlib.h>
 #include <string.h>
-
-// DigitalPersona dpfj definitions
-// These mirror the dpfj.h header from the DigitalPersona SDK
-
-#define DPFJ_SUCCESS 0
-#define DPFJ_E_MORE_DATA 0x05000005
-#define DPFJ_E_INVALID_PARAMETER 0x05000004
-
-#define DPFJ_FMD_DP_PRE_REG_FEATURES 0
-#define DPFJ_FMD_DP_REG_FEATURES 1
-#define DPFJ_FMD_DP_VER_FEATURES 2
-
-#define DPFJ_PROBABILITY_ONE 0x7FFFFFFF
+#include "dpfj.h"
 
 #define MY_MAX_FMD_SIZE 65536
-
-typedef unsigned int DPFJ_FMD_FORMAT;
-
-typedef struct {
-    unsigned int fmd_idx;
-    unsigned int view_idx;
-} DPFJ_CANDIDATE;
-
-// Function declarations for dpfj library
-extern int dpfj_start_enrollment(DPFJ_FMD_FORMAT fmd_format);
-extern int dpfj_add_to_enrollment(DPFJ_FMD_FORMAT fmd_format, unsigned char* fmd, unsigned int fmd_size, unsigned int view_idx);
-extern int dpfj_create_enrollment_fmd(unsigned char* fmd, unsigned int* fmd_size);
-extern int dpfj_finish_enrollment();
-extern int dpfj_identify(
-    DPFJ_FMD_FORMAT ver_fmd_format,
-    unsigned char* ver_fmd,
-    unsigned int ver_fmd_size,
-    unsigned int ver_view_idx,
-    DPFJ_FMD_FORMAT reg_fmd_format,
-    unsigned int reg_fmd_cnt,
-    unsigned char** reg_fmds,
-    unsigned int* reg_fmd_sizes,
-    unsigned int threshold_score,
-    unsigned int* candidate_cnt,
-    DPFJ_CANDIDATE* candidates
-);
-extern int dpfj_fmd_convert(
-    DPFJ_FMD_FORMAT in_fmd_format,
-    unsigned char* in_fmd,
-    unsigned int in_fmd_size,
-    DPFJ_FMD_FORMAT out_fmd_format,
-    unsigned char* out_fmd,
-    unsigned int* out_fmd_size
-);
 */
 import "C"
 
@@ -222,11 +177,17 @@ func Identify(verFMD []byte, regFMDs [][]byte) (int, error) {
 		if len(fmd) == 0 {
 			return 0, fmt.Errorf("dpfj: candidate FMD at index %d is empty", i)
 		}
-		cFMDPtrs[i] = (*C.uchar)(unsafe.Pointer(&fmd[0]))
+		// We must allocate C memory to hold the FMDs because a Go slice
+		// containing Go pointers cannot have its address passed to CGo.
+		cPtr := C.CBytes(fmd)
+		defer C.free(cPtr)
+		
+		cFMDPtrs[i] = (*C.uchar)(cPtr)
 		cFMDSizes[i] = C.uint(len(fmd))
 	}
 
 	matchedCandidates := make([]C.DPFJ_CANDIDATE, 1)
+	matchedCandidates[0].size = C.uint(C.sizeof_DPFJ_CANDIDATE)
 	expectedMatches := C.uint(1)
 
 	result := C.dpfj_identify(

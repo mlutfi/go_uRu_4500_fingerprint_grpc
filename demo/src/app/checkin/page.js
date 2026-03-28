@@ -43,7 +43,13 @@ export default function CheckinPage() {
       if (data.match) {
         setScanStatus('success');
         setScanStatusText('Fingerprint matched!');
-        setResult({ success: true, user: data.user, checkin: data.checkin });
+        setResult({
+          success: true,
+          user: data.user,
+          checkin: data.checkin,
+          verificationMode: data.verificationMode,
+          note: data.note,
+        });
 
         // Refresh recent check-ins
         const checkinsRes = await fetch('/api/checkins?limit=10');
@@ -114,6 +120,19 @@ export default function CheckinPage() {
                   <p style={{ fontSize: '12px', marginTop: '4px' }}>
                     Checked in at {new Date(result.checkin?.timestamp).toLocaleTimeString()}
                   </p>
+                  {result.verificationMode === 'demo' && (
+                    <div style={{
+                      marginTop: '8px',
+                      padding: '6px 10px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'var(--warning-bg)',
+                      border: '1px solid rgba(245, 158, 11, 0.2)',
+                      fontSize: '11px',
+                      color: 'var(--warning)',
+                    }}>
+                      ⚠ Demo mode — gRPC engine offline. Real biometric matching unavailable.
+                    </div>
+                  )}
                   <button className="btn btn-outline btn-sm mt-4" onClick={handleReset}>
                     Scan Another
                   </button>

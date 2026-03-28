@@ -235,14 +235,49 @@ export default function FingerprintScanner({
         )}
       </div>
 
-      {/* Status Text */}
-      {(statusText || qualityText) && (
-        <div className="scanner-status" style={{
-          color: status === 'success' ? 'var(--success)' 
-               : status === 'error' ? 'var(--danger)'
-               : 'var(--text-primary)',
+      {/* Processing indicator */}
+      {status === 'scanning' && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          marginTop: '16px',
+          padding: '8px 16px',
+          borderRadius: 'var(--radius-sm)',
+          background: 'rgba(59, 130, 246, 0.1)',
+          border: '1px solid rgba(59, 130, 246, 0.2)',
+          animation: 'pulse 1.5s ease-in-out infinite',
         }}>
-          {statusText || qualityText}
+          <span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} />
+          <span style={{ fontSize: '12px', color: 'var(--accent-primary)', fontWeight: 500 }}>
+            {statusText || 'Reading fingerprint...'}
+          </span>
+        </div>
+      )}
+
+      {/* Success indicator */}
+      {status === 'success' && statusText && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          marginTop: '16px',
+          padding: '8px 16px',
+          borderRadius: 'var(--radius-sm)',
+          background: 'rgba(16, 185, 129, 0.1)',
+          border: '1px solid rgba(16, 185, 129, 0.2)',
+          animation: 'fadeIn 0.3s ease',
+        }}>
+          <span style={{ fontSize: '12px', color: 'var(--success)', fontWeight: 500 }}>
+            ✅ {statusText}
+          </span>
+        </div>
+      )}
+
+      {/* Quality Text */}
+      {qualityText && status !== 'scanning' && status !== 'success' && (
+        <div className="scanner-status" style={{ color: 'var(--text-primary)' }}>
+          {qualityText}
         </div>
       )}
 

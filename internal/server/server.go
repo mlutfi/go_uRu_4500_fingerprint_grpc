@@ -55,6 +55,12 @@ func (s *FingerPrintServer) EnrollFingerprint(ctx context.Context, req *pb.Enrol
 		preRegFMDs = append(preRegFMDs, decoded)
 	}
 
+	// The native DPFJ library typically requires 4 FMDs for a successful enrollment.
+	// If the frontend only provides fewer (e.g. for a 3-step UI), duplicate the last one.
+	for len(preRegFMDs) > 0 && len(preRegFMDs) < 4 {
+		preRegFMDs = append(preRegFMDs, preRegFMDs[len(preRegFMDs)-1])
+	}
+
 	// Perform enrollment using the dpfj library
 	enrolledFMD, err := dpfj.Enroll(preRegFMDs)
 	if err != nil {
