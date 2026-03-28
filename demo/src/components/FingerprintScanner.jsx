@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { getSDK, getQualityLabel } from '@/lib/fingerprint-sdk';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Fingerprint, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
 export default function FingerprintScanner({
   onCapture,
@@ -14,7 +17,7 @@ export default function FingerprintScanner({
   const onCaptureRef = useRef(onCapture);
   useEffect(() => { onCaptureRef.current = onCapture; }, [onCapture]);
 
-  const [sdkAvailable, setSdkAvailable] = useState(null); // null = checking, true/false
+  const [sdkAvailable, setSdkAvailable] = useState(null);
   const [deviceConnected, setDeviceConnected] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [qualityText, setQualityText] = useState('');
@@ -25,7 +28,6 @@ export default function FingerprintScanner({
   const sdkRef = useRef(null);
   const mountedRef = useRef(true);
 
-  // Initialize SDK and register event handlers
   useEffect(() => {
     mountedRef.current = true;
 
@@ -45,40 +47,27 @@ export default function FingerprintScanner({
         return;
       }
 
-      // Event: Device Connected
       sdk.on('DeviceConnected', (event) => {
-        console.log('[Scanner] Device connected:', event.deviceId);
         if (mountedRef.current) setDeviceConnected(true);
       });
 
-      // Event: Device Disconnected
       sdk.on('DeviceDisconnected', (event) => {
-        console.log('[Scanner] Device disconnected:', event.deviceId);
         if (mountedRef.current) {
           setDeviceConnected(false);
           setCapturing(false);
         }
       });
 
-      // Event: Quality Reported
       sdk.on('QualityReported', (event) => {
         const label = getQualityLabel(event.quality);
-        console.log('[Scanner] Quality:', label);
         if (mountedRef.current) setQualityText(label);
       });
 
-      // Event: Samples Acquired — this is the main capture event
       sdk.on('SamplesAcquired', (event) => {
-        console.log('[Scanner] Samples acquired, format:', event.sampleFormat);
         if (!mountedRef.current) return;
-
-        // event.samples is an array of BioSample objects: { Header, Data, Version }
-        // Data is the Base64Url-encoded FMD string we need
         if (event.samples && event.samples.length > 0) {
           const bioSample = event.samples[0];
-          // Extract the Data field (Base64Url string) from the BioSample object
           const rawData = typeof bioSample === 'string' ? bioSample : bioSample.Data;
-          console.log('[Scanner] Sample data type:', typeof bioSample, '| Data length:', rawData?.length);
           if (rawData && onCaptureRef.current) {
             const base64 = base64UrlToBase64(rawData);
             onCaptureRef.current(base64);
@@ -86,32 +75,21 @@ export default function FingerprintScanner({
         }
       });
 
-      // Event: Error
-      sdk.on('ErrorOccurred', (event) => {
-        console.error('[Scanner] Error:', event.error);
-      });
-
-      // Events: Acquisition lifecycle
-      sdk.on('AcquisitionStarted', (event) => {
-        console.log('[Scanner] Acquisition STARTED on device:', event.deviceId);
+      sdk.on('AcquisitionStarted', () => {
         if (mountedRef.current) setCapturing(true);
       });
 
-      sdk.on('AcquisitionStopped', (event) => {
-        console.log('[Scanner] Acquisition STOPPED on device:', event.deviceId);
+      sdk.on('AcquisitionStopped', () => {
         if (mountedRef.current) setCapturing(false);
       });
 
-      // Event: Communication Failed (WebSdk channel down)
       sdk.on('CommunicationFailed', () => {
-        console.error('[Scanner] Communication with DpHost failed');
         if (mountedRef.current) {
           setSdkAvailable(false);
           setShowFallback(true);
         }
       });
 
-      // Check for currently connected devices
       sdk.getDeviceList().then(devices => {
         if (!mountedRef.current) return;
         if (devices.length > 0) {
@@ -145,35 +123,21 @@ export default function FingerprintScanner({
     };
   }, []);
 
-  // Auto-start capture when device is ready.
-  // This effect starts capture ONCE and doesn't re-run when capturing changes.
-  // Cleanup only stops capture on unmount or when conditions become invalid.
   useEffect(() => {
     if (!autoStart || disabled || !sdkAvailable || !deviceConnected) return;
-
     const sdk = sdkRef.current;
     if (!sdk || !sdk.isAvailable()) return;
-
-    // Don't start if already capturing
     if (sdk.isCapturing) return;
 
-    console.log('[Scanner] Auto-starting capture...');
-    sdk.startCapture().then(ok => {
-      console.log('[Scanner] startCapture result:', ok);
-    });
+    sdk.startCapture().catch(() => {});
 
-    // Only stop when component unmounts or device/sdk conditions change
-    // NOT when status changes — capture must stay alive across enrollment steps
     return () => {
       if (sdk.isCapturing) {
-        console.log('[Scanner] Stopping capture: conditions changed or unmounting');
         sdk.stopCapture();
       }
     };
-
   }, [autoStart, disabled, sdkAvailable, deviceConnected]);
 
-  // Restart capture when selected device changes in the sidebar
   useEffect(() => {
     const sdk = sdkRef.current;
     if (!sdk) return;
@@ -181,12 +145,10 @@ export default function FingerprintScanner({
     const handleDeviceChange = async (newDeviceUid) => {
       if (!mountedRef.current) return;
       setActiveDevice(newDeviceUid);
-      // Stop current capture and restart on new device
       if (sdk.isCapturing) {
         await sdk.stopCapture();
       }
       if (autoStart && !disabled && sdkAvailable && deviceConnected) {
-        console.log('[Scanner] Restarting capture on new device:', newDeviceUid);
         await sdk.startCapture();
       }
     };
@@ -195,7 +157,6 @@ export default function FingerprintScanner({
     return () => sdk.offSelectedDeviceChange(handleDeviceChange);
   }, [autoStart, disabled, sdkAvailable, deviceConnected]);
 
-  // Fallback: manual FMD paste
   const handleSubmitFmd = () => {
     if (fmdInput.trim() && onCapture) {
       onCapture(fmdInput.trim());
@@ -203,217 +164,161 @@ export default function FingerprintScanner({
     }
   };
 
-  const statusClass = status === 'scanning' ? 'scanning'
-    : status === 'success' ? 'success'
-    : status === 'error' ? 'error'
-    : capturing ? 'scanning'
-    : '';
+  const isScanning = status === 'scanning' || capturing;
+  const isSuccess = status === 'success';
+  const isError = status === 'error';
 
-  const icon = status === 'success' ? '✅'
-    : status === 'error' ? '❌'
-    : '👆';
-
-  // Determine instructional text
   let displayHint = hintText;
   if (sdkAvailable === null) {
     displayHint = 'Initializing scanner...';
   } else if (sdkAvailable && !deviceConnected) {
     displayHint = 'Connect your U.are.U 4500 scanner to proceed';
-  } else if (sdkAvailable && deviceConnected && capturing && status === 'idle') {
-    displayHint = hintText;
   } else if (!sdkAvailable) {
     displayHint = 'WebSDK not available — use manual input below';
   }
 
   return (
-    <div className="scanner-container">
-      {/* Scanner Visual */}
-      <div className={`scanner-ring ${statusClass}`}>
-        <span className="scanner-icon">{icon}</span>
-        {(capturing || status === 'scanning') && (
-          <div className="scanner-line" />
+    <div className="flex flex-col items-center justify-center py-6 w-full">
+      {/* Scanner Visual Container */}
+      <div 
+        className={`relative flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border-2 transition-all duration-300 ${
+          isSuccess ? 'border-green-500 bg-green-500/10' :
+          isError ? 'border-destructive bg-destructive/10' :
+          isScanning ? 'border-primary ring-4 ring-primary/20 bg-primary/5' :
+          'border-muted-foreground/30 bg-muted/20'
+        }`}
+      >
+        {isSuccess ? (
+          <CheckCircle2 className="h-14 w-14 text-green-500 animate-in zoom-in duration-300" />
+        ) : isError ? (
+          <XCircle className="h-14 w-14 text-destructive animate-in zoom-in duration-300" />
+        ) : (
+          <Fingerprint className={`h-16 w-16 transition-colors duration-300 ${
+            isScanning ? 'text-primary' : 'text-muted-foreground/30'
+          }`} />
+        )}
+
+        {/* Scan Line Animation */}
+        {(isScanning) && !isSuccess && !isError && (
+          <div className="absolute top-0 left-0 h-full w-full">
+            <div className="h-1.5 w-full bg-primary/80 blur-[2px] shadow-[0_0_12px_rgba(var(--primary),0.8)] animate-scan-line" />
+          </div>
         )}
       </div>
 
-      {/* Processing indicator */}
+      {/* Processing Status */}
       {status === 'scanning' && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          marginTop: '16px',
-          padding: '8px 16px',
-          borderRadius: 'var(--radius-sm)',
-          background: 'rgba(59, 130, 246, 0.1)',
-          border: '1px solid rgba(59, 130, 246, 0.2)',
-          animation: 'pulse 1.5s ease-in-out infinite',
-        }}>
-          <span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} />
-          <span style={{ fontSize: '12px', color: 'var(--accent-primary)', fontWeight: 500 }}>
-            {statusText || 'Reading fingerprint...'}
-          </span>
+        <div className="mt-6 flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-1.5 text-sm text-foreground animate-pulse">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          <span className="font-medium">{statusText || 'Reading fingerprint...'}</span>
         </div>
       )}
 
-      {/* Success indicator */}
-      {status === 'success' && statusText && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          marginTop: '16px',
-          padding: '8px 16px',
-          borderRadius: 'var(--radius-sm)',
-          background: 'rgba(16, 185, 129, 0.1)',
-          border: '1px solid rgba(16, 185, 129, 0.2)',
-          animation: 'fadeIn 0.3s ease',
-        }}>
-          <span style={{ fontSize: '12px', color: 'var(--success)', fontWeight: 500 }}>
-            ✅ {statusText}
-          </span>
+      {/* Success/Error Text */}
+      {isSuccess && statusText && (
+        <div className="mt-6 flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/15 px-3 py-1.5 text-sm font-medium text-green-600 dark:text-green-400 animate-in slide-in-from-bottom-2">
+           {statusText}
+        </div>
+      )}
+      
+      {isError && statusText && (
+        <div className="mt-6 flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/15 px-3 py-1.5 text-sm font-medium text-destructive animate-in slide-in-from-bottom-2">
+           {statusText}
         </div>
       )}
 
       {/* Quality Text */}
-      {qualityText && status !== 'scanning' && status !== 'success' && (
-        <div className="scanner-status" style={{ color: 'var(--text-primary)' }}>
+      {qualityText && !isScanning && !isSuccess && (
+        <div className="mt-4 text-sm font-medium text-amber-500">
           {qualityText}
         </div>
       )}
 
       {/* Hint */}
-      <div className="scanner-hint">{displayHint}</div>
+      <div className="mt-4 text-center text-sm font-medium text-muted-foreground">
+        {displayHint}
+      </div>
 
-      {/* Device indicator */}
+      {/* Device Indicator */}
       {sdkAvailable && (
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '6px', 
-          marginTop: '12px',
-          fontSize: '11px',
-          color: deviceConnected ? 'var(--success)' : 'var(--text-muted)',
-        }}>
-          <span style={{
-            width: '6px',
-            height: '6px',
-            borderRadius: '50%',
-            background: deviceConnected ? 'var(--success)' : 'var(--danger)',
-            display: 'inline-block',
-          }} />
+        <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+          <span className={`h-1.5 w-1.5 rounded-full ${deviceConnected ? 'bg-green-500' : 'bg-destructive'}`} />
           {deviceConnected ? (
-            <>
-              Scanner ready — listening on{' '}
-              <span style={{ fontWeight: 600 }}>
-                {activeDevice ? 'selected reader' : 'default reader'}
-              </span>
-            </>
+            <span>Scanner ready <span className="font-semibold text-foreground tracking-tight">· {activeDevice ? 'Selected' : 'Default'}</span></span>
           ) : 'Scanner not detected'}
         </div>
       )}
 
-      {/* Cert trust hint */}
+      {/* Cert Error */}
       {certError && (
-        <div style={{
-          marginTop: '12px',
-          padding: '12px 16px',
-          borderRadius: 'var(--radius-sm)',
-          background: 'rgba(245, 158, 11, 0.1)',
-          border: '1px solid rgba(245, 158, 11, 0.3)',
-          fontSize: '12px',
-          lineHeight: '1.5',
-          color: 'var(--warning)',
-        }}>
-          <strong>⚠ Certificate not trusted</strong>
-          <br />
+        <div className="mt-4 rounded-md border border-yellow-500/40 bg-yellow-500/10 p-3 text-xs leading-relaxed text-yellow-600 dark:text-yellow-500">
+          <strong className="block mb-1 font-semibold">⚠ Certificate not trusted</strong>
           DpHost uses a self-signed HTTPS certificate. Open{' '}
-          <a
-            href="https://127.0.0.1:52181/get_connection"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: 'var(--accent-primary)', textDecoration: 'underline' }}
-          >
+          <a href="https://127.0.0.1:52181/get_connection" target="_blank" rel="noopener noreferrer" className="text-foreground underline underline-offset-2">
             https://127.0.0.1:52181
           </a>{' '}
           in your browser, accept the certificate, then reload this page.
         </div>
       )}
 
-      {/* Fallback: Manual FMD Input */}
+      {/* Manual Fallback */}
       {(showFallback || !sdkAvailable) && sdkAvailable !== null && (
-        <div className="fmd-input-section">
-          <div style={{ 
-            fontSize: '11px', 
-            color: 'var(--text-muted)', 
-            marginBottom: '8px',
-            textAlign: 'center',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-          }}>
-            <div style={{ width: '32px', height: '1px', background: 'var(--border)' }} />
-            <span>or paste Base64 FMD data</span>
-            <div style={{ width: '32px', height: '1px', background: 'var(--border)' }} />
+        <div className="mt-6 w-full max-w-sm">
+          <div className="relative mb-4 text-center">
+            <span className="bg-background px-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Or manual input</span>
+            <div className="absolute inset-x-0 top-1/2 -z-10 h-px bg-border" />
           </div>
-          <textarea
-            className="fmd-textarea"
+          
+          <Textarea
             placeholder="Paste base64 encoded FMD data here..."
+            className="min-h-[80px] font-mono text-xs"
             value={fmdInput}
             onChange={(e) => setFmdInput(e.target.value)}
-            disabled={disabled || status === 'scanning'}
-            rows={3}
+            disabled={disabled || isScanning}
           />
-          <div style={{ marginTop: '12px', textAlign: 'center' }}>
-            <button
-              className="btn btn-primary"
-              onClick={handleSubmitFmd}
-              disabled={!fmdInput.trim() || disabled || status === 'scanning'}
-            >
-              {status === 'scanning' ? (
-                <>
-                  <span className="spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }} />
-                  Processing...
-                </>
-              ) : (
-                <>👆 Submit Fingerprint</>
-              )}
-            </button>
-          </div>
+          <Button
+            className="mt-3 w-full"
+            onClick={handleSubmitFmd}
+            disabled={!fmdInput.trim() || disabled || isScanning}
+          >
+            {isScanning ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
+            ) : (
+              'Submit Fingerprint'
+            )}
+          </Button>
         </div>
       )}
 
-      {/* Toggle fallback when SDK is available */}
       {sdkAvailable && !showFallback && (
-        <button
+        <Button
+          variant="link"
+          className="mt-4 h-auto p-0 text-[11px] text-muted-foreground hover:text-foreground"
           onClick={() => setShowFallback(true)}
-          style={{
-            marginTop: '16px',
-            background: 'none',
-            border: 'none',
-            color: 'var(--text-muted)',
-            fontSize: '11px',
-            cursor: 'pointer',
-            textDecoration: 'underline',
-            fontFamily: 'inherit',
-          }}
         >
-          Manual input mode →
-        </button>
+          Use manual input mode &rarr;
+        </Button>
       )}
+
+      {/* Custom CSS for scan line animation inside tailwind flow */}
+      <style jsx>{`
+        @keyframes scanLine {
+          0% { transform: translateY(-3rem); opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { transform: translateY(3rem); opacity: 0; }
+        }
+        .animate-scan-line {
+          animation: scanLine 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+      `}</style>
     </div>
   );
 }
 
-/**
- * Convert Base64Url to standard Base64
- * The @digitalpersona SDK uses Base64Url encoding
- */
 function base64UrlToBase64(base64url) {
   if (!base64url || typeof base64url !== 'string') return base64url;
-  // Replace URL-safe characters
   let base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
-  // Add padding
   const pad = base64.length % 4;
   if (pad === 2) base64 += '==';
   else if (pad === 3) base64 += '=';

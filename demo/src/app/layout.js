@@ -3,13 +3,27 @@ import './globals.css';
 import Navbar from '@/components/Navbar';
 
 export const metadata = {
-  title: 'FingerAuth - Biometric Authentication System',
+  title: 'FingerAuth — Biometric Authentication System',
   description: 'Fingerprint enrollment and check-in system powered by DigitalPersona U.are.U 4500 WebSDK',
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="light" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var theme = localStorage.getItem('theme') || 'light';
+                  document.documentElement.setAttribute('data-theme', theme);
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body>
         {/* 
           DigitalPersona WebSDK chain: load in order
@@ -30,10 +44,12 @@ export default function RootLayout({ children }) {
           strategy="beforeInteractive" 
         />
 
-        <div className="app-layout">
+        <div className="flex h-screen w-full bg-background text-foreground text-sm font-sans antialiased overflow-hidden">
           <Navbar />
-          <main className="main-content">
-            {children}
+          <main className="flex-1 overflow-y-auto p-6 md:p-8">
+            <div className="mx-auto max-w-6xl">
+              {children}
+            </div>
           </main>
         </div>
       </body>

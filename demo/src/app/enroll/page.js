@@ -2,24 +2,28 @@
 
 import { useState } from 'react';
 import FingerprintScanner from '@/components/FingerprintScanner';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { CheckCircle2, UserPlus, Fingerprint, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 
 export default function EnrollPage() {
-  // Step 1: Create user, Step 2: Enroll fingerprint
   const [step, setStep] = useState('form'); // form | enroll | done
   const [user, setUser] = useState(null);
   const [formData, setFormData] = useState({ name: '', employee_id: '', department: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Enrollment state
   const [captures, setCaptures] = useState([]);
-  const [captureStep, setCaptureStep] = useState(0); // 0, 1, 2
+  const [captureStep, setCaptureStep] = useState(0);
   const [scanStatus, setScanStatus] = useState('idle');
   const [scanStatusText, setScanStatusText] = useState('');
   const [enrolling, setEnrolling] = useState(false);
   const [enrollResult, setEnrollResult] = useState(null);
 
-  // Handle create user
   const handleCreateUser = async (e) => {
     e.preventDefault();
     setError('');
@@ -31,13 +35,8 @@ export default function EnrollPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
-
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to create user');
-      }
-
+      if (!res.ok) throw new Error(data.error || 'Failed to create user');
       setUser(data.user);
       setStep('enroll');
     } catch (err) {
@@ -47,10 +46,8 @@ export default function EnrollPage() {
     }
   };
 
-  // Handle fingerprint capture from scanner (auto or manual)
   const handleCapture = (fmdData) => {
     if (captures.length >= 3) return;
-
     setScanStatus('scanning');
     setScanStatusText('Processing fingerprint...');
 
@@ -60,8 +57,6 @@ export default function EnrollPage() {
       setCaptureStep(newCaptures.length);
       setScanStatus('success');
       setScanStatusText(`Capture ${newCaptures.length}/3 successful!`);
-
-      // Reset after showing success
       setTimeout(() => {
         if (newCaptures.length < 3) {
           setScanStatus('idle');
@@ -71,7 +66,6 @@ export default function EnrollPage() {
     }, 800);
   };
 
-  // Handle enrollment submission
   const handleEnroll = async () => {
     if (captures.length < 3) return;
     setEnrolling(true);
@@ -87,13 +81,8 @@ export default function EnrollPage() {
           fingerName: 'right_index',
         }),
       });
-
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Enrollment failed');
-      }
-
+      if (!res.ok) throw new Error(data.error || 'Enrollment failed');
       setEnrollResult(data);
       setStep('done');
     } catch (err) {
@@ -103,7 +92,6 @@ export default function EnrollPage() {
     }
   };
 
-  // Reset the entire form
   const handleReset = () => {
     setStep('form');
     setUser(null);
@@ -117,211 +105,198 @@ export default function EnrollPage() {
   };
 
   return (
-    <div style={{ animation: 'fadeIn 0.4s ease' }}>
-      <div className="page-header">
-        <h2>Add User & Enroll Fingerprint</h2>
-        <p>Register a new user and capture their fingerprint (3 captures required)</p>
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl">
+      <div className="mb-8 pl-1">
+        <h2 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+          <UserPlus className="h-6 w-6 text-primary" />
+          Enroll User
+        </h2>
+        <p className="text-sm text-muted-foreground mt-1">Register new personnel and capture biometric data.</p>
       </div>
 
       {error && (
-        <div className="alert alert-error">
-          ❌ {error}
+        <div className="mb-6 rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm font-medium text-destructive animate-in slide-in-from-top-2">
+          {error}
         </div>
       )}
 
-      {/* Step Progress */}
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '12px', 
-        marginBottom: '32px',
-        padding: '16px',
-        background: 'var(--bg-card)',
-        borderRadius: 'var(--radius-lg)',
-        border: '1px solid var(--border)',
-      }}>
-        <div style={{
-          width: '32px', height: '32px', borderRadius: '50%',
-          background: step === 'form' ? 'var(--accent-primary)' : 'var(--success)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '14px', fontWeight: 700, color: 'white',
-        }}>
-          {step !== 'form' ? '✓' : '1'}
+      {/* Progress Steps */}
+      <div className="mb-8 flex items-center justify-between rounded-xl border bg-card p-4 shadow-sm">
+        <div className={`flex flex-col items-center gap-2 ${step === 'form' ? 'text-primary' : 'text-green-600 dark:text-green-500'}`}>
+          <div className={`flex h-8 w-8 items-center justify-center rounded-full border-2 font-bold ${step === 'form' ? 'border-primary bg-primary/10' : 'border-green-500 bg-green-500/10'}`}>
+            {step !== 'form' ? <CheckCircle2 className="h-4 w-4" /> : '1'}
+          </div>
+          <span className="text-xs font-semibold">User Info</span>
         </div>
-        <span style={{ fontSize: '14px', fontWeight: step === 'form' ? 600 : 400, color: step === 'form' ? 'var(--text-primary)' : 'var(--success)' }}>
-          User Info
-        </span>
-        <div style={{ width: '40px', height: '2px', background: step === 'form' ? 'var(--border)' : 'var(--success)' }} />
-        <div style={{
-          width: '32px', height: '32px', borderRadius: '50%',
-          background: step === 'enroll' ? 'var(--accent-primary)' : step === 'done' ? 'var(--success)' : 'var(--bg-secondary)',
-          border: step === 'form' ? '2px solid var(--border)' : 'none',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '14px', fontWeight: 700, color: step === 'form' ? 'var(--text-muted)' : 'white',
-        }}>
-          {step === 'done' ? '✓' : '2'}
+        
+        <div className={`h-px w-full flex-1 mx-4 ${step === 'form' ? 'bg-border' : 'bg-green-500/50'}`} />
+        
+        <div className={`flex flex-col items-center gap-2 ${step === 'enroll' ? 'text-primary' : step === 'done' ? 'text-green-600 dark:text-green-500' : 'text-muted-foreground'}`}>
+          <div className={`flex h-8 w-8 items-center justify-center rounded-full border-2 font-bold ${step === 'enroll' ? 'border-primary bg-primary/10' : step === 'done' ? 'border-green-500 bg-green-500/10' : 'border-border bg-muted/30'}`}>
+            {step === 'done' ? <CheckCircle2 className="h-4 w-4" /> : '2'}
+          </div>
+          <span className="text-xs font-semibold">Fingerprint</span>
         </div>
-        <span style={{ fontSize: '14px', fontWeight: step === 'enroll' ? 600 : 400, color: step === 'enroll' ? 'var(--text-primary)' : step === 'done' ? 'var(--success)' : 'var(--text-muted)' }}>
-          Fingerprint Scan
-        </span>
-        <div style={{ width: '40px', height: '2px', background: step === 'done' ? 'var(--success)' : 'var(--border)' }} />
-        <div style={{
-          width: '32px', height: '32px', borderRadius: '50%',
-          background: step === 'done' ? 'var(--success)' : 'var(--bg-secondary)',
-          border: step !== 'done' ? '2px solid var(--border)' : 'none',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '14px', fontWeight: 700, color: step === 'done' ? 'white' : 'var(--text-muted)',
-        }}>
-          {step === 'done' ? '✓' : '3'}
+
+        <div className={`h-px w-full flex-1 mx-4 ${step === 'done' ? 'bg-green-500/50' : 'bg-border'}`} />
+
+        <div className={`flex flex-col items-center gap-2 ${step === 'done' ? 'text-green-600 dark:text-green-500' : 'text-muted-foreground'}`}>
+          <div className={`flex h-8 w-8 items-center justify-center rounded-full border-2 font-bold ${step === 'done' ? 'border-green-500 bg-green-500/10' : 'border-border bg-muted/30'}`}>
+            {step === 'done' ? <CheckCircle2 className="h-4 w-4" /> : '3'}
+          </div>
+          <span className="text-xs font-semibold">Complete</span>
         </div>
-        <span style={{ fontSize: '14px', fontWeight: step === 'done' ? 600 : 400, color: step === 'done' ? 'var(--success)' : 'var(--text-muted)' }}>
-          Complete
-        </span>
       </div>
 
-      {/* Step 1: User Form */}
       {step === 'form' && (
-        <div className="card" style={{ maxWidth: '560px' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '24px' }}>
-            👤 User Information
-          </h3>
-          <form onSubmit={handleCreateUser}>
-            <div className="form-group">
-              <label className="form-label">Full Name *</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="e.g. Ahmad Dahir"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Employee ID (optional)</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="Auto-generated if empty"
-                value={formData.employee_id}
-                onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Department</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="e.g. Engineering"
-                value={formData.department}
-                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-              />
-            </div>
-            <button type="submit" className="btn btn-primary btn-lg" disabled={loading} style={{ width: '100%' }}>
-              {loading ? (
-                <>
-                  <span className="spinner" style={{ width: '18px', height: '18px', borderWidth: '2px' }} />
-                  Creating User...
-                </>
-              ) : (
-                <>Continue to Fingerprint Scan →</>
-              )}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* Step 2: Fingerprint Enrollment */}
-      {step === 'enroll' && (
-        <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-            <div>
-              <h3 style={{ fontSize: '18px', fontWeight: 600 }}>
-                👆 Fingerprint Scan
-              </h3>
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                Enrolling for: <strong style={{ color: 'var(--accent-primary-hover)' }}>{user?.name}</strong>
-                {' '}({user?.employee_id})
-              </p>
-            </div>
-            <span className="badge badge-info">Capture {Math.min(captureStep + 1, 3)} of 3</span>
-          </div>
-
-          {/* Capture Progress Dots */}
-          <div className="enroll-steps">
-            {[0, 1, 2].map((i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div className={`step-dot ${
-                  i < captureStep ? 'done' : i === captureStep && captureStep < 3 ? 'active' : ''
-                }`}>
-                  {i < captureStep ? '✓' : i + 1}
-                </div>
-                {i < 2 && (
-                  <div className={`step-connector ${i < captureStep ? 'done' : ''}`} />
-                )}
+        <Card>
+          <CardHeader>
+            <CardTitle>Personnel Details</CardTitle>
+            <CardDescription>Enter basic information for the new user profile.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleCreateUser} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name <span className="text-destructive">*</span></Label>
+                <Input
+                  id="name"
+                  placeholder="e.g. Ahmad Dahir"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
               </div>
-            ))}
-          </div>
-
-          {captures.length < 3 ? (
-            <FingerprintScanner
-              status={scanStatus}
-              statusText={scanStatusText}
-              hintText={`Capture ${captureStep + 1} of 3 — Place your finger on the scanner`}
-              onCapture={handleCapture}
-              disabled={captures.length >= 3}
-              autoStart={true}
-            />
-          ) : (
-            <div style={{ textAlign: 'center', padding: '32px' }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎉</div>
-              <h3 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '8px', color: 'var(--success)' }}>
-                All 3 Captures Complete!
-              </h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '24px' }}>
-                Ready to enroll fingerprint. This will combine all 3 captures into a single enrolled template via gRPC.
-              </p>
-              <button
-                className="btn btn-success btn-lg"
-                onClick={handleEnroll}
-                disabled={enrolling}
-              >
-                {enrolling ? (
-                  <>
-                    <span className="spinner" style={{ width: '18px', height: '18px', borderWidth: '2px' }} />
-                    Enrolling via gRPC...
-                  </>
-                ) : (
-                  <>🔐 Enroll Fingerprint</>
-                )}
-              </button>
-            </div>
-          )}
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="employee_id">Employee ID</Label>
+                <Input
+                  id="employee_id"
+                  placeholder="Auto-generated if empty"
+                  value={formData.employee_id}
+                  onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
+                  className="font-mono text-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="department">Department</Label>
+                <Input
+                  id="department"
+                  placeholder="e.g. Engineering"
+                  value={formData.department}
+                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                />
+              </div>
+              <Button type="submit" className="w-full mt-2" disabled={loading}>
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {loading ? 'Processing...' : 'Continue to Fingerprint Scan'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Step 3: Done */}
+      {step === 'enroll' && (
+        <Card className="overflow-hidden">
+          <CardHeader className="bg-muted/30 border-b">
+            <div className="flex items-start justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Fingerprint className="h-5 w-5 text-primary" />
+                  Biometric Capture
+                </CardTitle>
+                <CardDescription className="mt-1.5 flex flex-col gap-0.5">
+                  <span>Enrolling for: <strong className="text-foreground font-semibold">{user?.name}</strong></span>
+                  <span className="font-mono text-xs">{user?.employee_id}</span>
+                </CardDescription>
+              </div>
+              <Badge variant="secondary" className="font-medium">
+                {Math.min(captureStep + 1, 3)} / 3 Captures
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="mb-6 flex justify-center gap-4">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <div className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                    i < captureStep ? 'bg-green-500 text-white' : 
+                    i === captureStep && captureStep < 3 ? 'bg-primary text-primary-foreground ring-4 ring-primary/20' : 
+                    'bg-muted text-muted-foreground'
+                  }`}>
+                    {i < captureStep ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
+                  </div>
+                  {i < 2 && (
+                    <div className={`h-1 w-12 rounded-full ${i < captureStep ? 'bg-green-500/50' : 'bg-border'}`} />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {captures.length < 3 ? (
+              <div className="rounded-xl border bg-card p-4">
+                <FingerprintScanner
+                  status={scanStatus}
+                  statusText={scanStatusText}
+                  hintText={`Capture ${captureStep + 1} of 3 — Place finger firmly on scanner`}
+                  onCapture={handleCapture}
+                  disabled={captures.length >= 3}
+                  autoStart={true}
+                />
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center p-8 text-center bg-green-500/5 rounded-xl border border-green-500/20">
+                <CheckCircle2 className="mb-4 h-16 w-16 text-green-500" />
+                <h3 className="mb-2 text-xl font-bold text-green-600 dark:text-green-500">Processing Complete</h3>
+                <p className="mb-6 text-sm text-muted-foreground max-w-sm">
+                  3 captures acquired successfully. The system will now combine these into a single high-quality biometric template.
+                </p>
+                <Button size="lg" onClick={handleEnroll} disabled={enrolling} className="w-full max-w-xs shadow-md">
+                  {enrolling ? (
+                    <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Enrolling to Engine...</>
+                  ) : (
+                    'Finalize Enrollment'
+                  )}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {step === 'done' && (
-        <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
-          <div style={{ fontSize: '64px', marginBottom: '16px' }}>✅</div>
-          <h3 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '8px', color: 'var(--success)' }}>
-            Enrollment Successful!
-          </h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '8px' }}>
-            User <strong style={{ color: 'var(--text-primary)' }}>{user?.name}</strong> has been enrolled with fingerprint.
-          </p>
-          <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '32px' }}>
-            Employee ID: {user?.employee_id} · Fingerprint ID: {enrollResult?.fingerprint?.id}
-          </p>
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-            <button className="btn btn-primary" onClick={handleReset}>
-              ➕ Add Another User
-            </button>
-            <a href="/checkin" className="btn btn-outline">
-              ✅ Go to Check-in
-            </a>
-          </div>
-        </div>
+        <Card className="border-green-500/30 bg-green-500/5 shadow-sm">
+          <CardContent className="flex flex-col items-center p-10 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-500/20 mb-6">
+              <CheckCircle2 className="h-10 w-10 text-green-600 dark:text-green-500" />
+            </div>
+            <h3 className="text-2xl font-bold text-foreground mb-2">Enrollment Successful</h3>
+            <p className="text-muted-foreground mb-6">
+              <strong className="text-foreground">{user?.name}</strong> has been securely registered.
+            </p>
+            
+            <div className="bg-background border rounded-lg p-4 w-full flex flex-col gap-2 mb-8">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Employee ID</span>
+                <span className="font-mono font-medium">{user?.employee_id}</span>
+              </div>
+              <div className="h-px bg-border w-full" />
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Template ID</span>
+                <span className="font-mono font-medium truncate max-w-[150px] ml-4" title={enrollResult?.fingerprint?.id}>
+                  {enrollResult?.fingerprint?.id?.split('-')[0]}...
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-4 w-full justify-center">
+              <Button onClick={handleReset} variant="outline" className="flex-1 max-w-[180px]">
+                Enroll Next
+              </Button>
+              <Button asChild className="flex-1 max-w-[180px]">
+                <Link href="/checkin">Go to Check-in</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

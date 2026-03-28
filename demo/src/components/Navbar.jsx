@@ -3,62 +3,76 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import DeviceStatus from './DeviceStatus';
+import ThemeToggle from './ThemeToggle';
+import { LayoutDashboard, UserPlus, Fingerprint, Users, Link as LinkIcon } from 'lucide-react';
 
 export default function Navbar() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: '/', icon: '📊', label: 'Dashboard' },
-    { href: '/enroll', icon: '👆', label: 'Add User & Enroll' },
-    { href: '/checkin', icon: '✅', label: 'Check In' },
-    { href: '/users', icon: '👥', label: 'Users' },
+    { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
+    { href: '/enroll', icon: UserPlus, label: 'Enroll' },
+    { href: '/checkin', icon: Fingerprint, label: 'Check In', isPrimary: true },
+    { href: '/users', icon: Users, label: 'Users' },
   ];
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-logo">
-        <div className="sidebar-logo-icon">🔐</div>
+    <aside className="w-[260px] flex-shrink-0 flex flex-col border-r bg-card h-full overflow-y-auto">
+      <div className="flex items-center gap-3 border-b px-6 py-4">
+        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
+          <Fingerprint className="h-5 w-5" />
+        </div>
         <div>
-          <h1>FingerAuth</h1>
-          <span>U.are.U 4500</span>
+          <h1 className="text-sm font-bold tracking-tight text-foreground">FingerAuth</h1>
+          <span className="text-[10px] text-muted-foreground block font-medium">U.are.U 4500</span>
         </div>
       </div>
 
-      <nav className="sidebar-nav">
-        <div className="nav-section-label">Main Menu</div>
-        {navItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`nav-link ${pathname === item.href ? 'active' : ''}`}
-          >
-            <span className="nav-link-icon">{item.icon}</span>
-            {item.label}
-          </Link>
-        ))}
+      <nav className="flex-1 px-4 py-6 flex flex-col gap-1 overflow-y-auto">
+        <div className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase mb-2 px-2">Navigation</div>
+        <div className="flex flex-col gap-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href;
+            
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  isActive 
+                    ? 'bg-muted text-foreground font-semibold' 
+                    : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                }`}
+              >
+                <Icon className={`h-4 w-4 shrink-0 ${item.isPrimary ? 'text-primary' : ''}`} />
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
 
-        <div className="nav-section-label" style={{ marginTop: '24px' }}>Device</div>
-        <div style={{ padding: '0 4px' }}>
+        <div className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase mt-6 mb-2 px-2">Device</div>
+        <div className="px-1">
           <DeviceStatus />
         </div>
 
-        <div className="nav-section-label" style={{ marginTop: '16px' }}>System</div>
-        <div className="nav-link" style={{ cursor: 'default' }}>
-          <span className="nav-link-icon">🔗</span>
-          <div>
-            <div style={{ fontSize: '13px' }}>gRPC Engine</div>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>localhost:4134</div>
+        <div className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase mt-6 mb-2 px-2">System</div>
+        <div className="flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground rounded-md bg-muted/30">
+          <LinkIcon className="h-4 w-4 shrink-0" />
+          <div className="flex flex-col">
+            <span className="font-medium text-foreground">gRPC Engine</span>
+            <span className="text-[11px] font-mono">localhost:4134</span>
           </div>
         </div>
       </nav>
 
-      <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border)' }}>
-        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-          FingerAuth Demo v2.0
+      <div className="mt-auto border-t p-4 flex items-center justify-between">
+        <div className="flex flex-col">
+          <span className="text-[11px] font-medium text-muted-foreground">FingerAuth v2.0</span>
+          <span className="text-[10px] text-muted-foreground">WebSDK · gRPC</span>
         </div>
-        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-          U.are.U 4500 · WebSDK · gRPC Engine
-        </div>
+        <ThemeToggle />
       </div>
     </aside>
   );
